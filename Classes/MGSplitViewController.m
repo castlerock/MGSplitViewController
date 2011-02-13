@@ -313,15 +313,26 @@
 		
 		// Position master.
 		controller = self.masterViewController;
-		if (controller && [controller isKindOfClass:[UIViewController class]])  {
-			theView = controller.view;
-			if (theView) {
+		BOOL inPopover = NO;
+		if ([controller respondsToSelector:@selector(popoverController)] && ([controller performSelector:@selector(popoverViewController)] == nil))
+			inPopover = YES;
+		if ([controller isKindOfClass:[UINavigationController class]] && 
+				[[[(UINavigationController *)controller viewControllers] lastObject] respondsToSelector:@selector(popoverController)] && 
+				[[[(UINavigationController *)controller viewControllers] lastObject] performSelector:@selector(popoverController)] != nil) {
+			inPopover = YES;
+		}
+		
+		if (!inPopover) {
+			if (controller && [controller isKindOfClass:[UIViewController class]])  {
+				theView = controller.view;
+				if (theView) {
 			
-				theView.frame = masterRect;
-				if (!theView.superview) {
-					[controller viewWillAppear:NO];
-					[self.view addSubview:theView];
-					[controller viewDidAppear:NO];
+					theView.frame = masterRect;
+					if (!theView.superview) {
+						[controller viewWillAppear:NO];
+						[self.view addSubview:theView];
+						[controller viewDidAppear:NO];
+					}
 				}
 			}
 		}
@@ -972,23 +983,28 @@
 
 - (void)setViewControllers:(NSArray *)controllers
 {
-	if (controllers != _viewControllers) {
-		for (UIViewController *controller in _viewControllers) {
-			if ([controller isKindOfClass:[UIViewController class]]) {
-				[controller.view removeFromSuperview];
-			}
+	if ([_viewControllers objectAtIndex:0] != [controllers objectAtIndex:0]) {
+		if ([_viewControllers objectAtIndex:0] != [NSNull null]) {
+			[[[_viewControllers objectAtIndex:0] view] removeFromSuperview];
+			[_viewControllers removeObjectAtIndex:0];
+			[_viewControllers insertObject:[controllers objectAtIndex:0] atIndex:0];
 		}
-		[_viewControllers release];
-		_viewControllers = [[NSMutableArray alloc] initWithCapacity:2];
-		if (controllers && [controllers count] >= 2) {
-			self.masterViewController = [controllers objectAtIndex:0];
-			self.detailViewController = [controllers objectAtIndex:1];
-		} else {
-			NSLog(@"Error: %@ requires 2 view-controllers. (%@)", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
-		}
-		
-		[self layoutSubviews];
 	}
+	if ([_viewControllers objectAtIndex:1] != [controllers objectAtIndex:1]) {
+		if ([_viewControllers objectAtIndex:1] != [NSNull null]) {
+			[[[_viewControllers objectAtIndex:1] view] removeFromSuperview];
+			[_viewControllers removeObjectAtIndex:1];
+			[_viewControllers insertObject:[controllers objectAtIndex:1] atIndex:1];
+		}
+	}	
+	if (controllers && [controllers count] >= 2) {
+		self.masterViewController = [controllers objectAtIndex:0];
+		self.detailViewController = [controllers objectAtIndex:1];
+	} else {
+		NSLog(@"Error: %@ requires 2 view-controllers. (%@)", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
+	}
+	
+	[self layoutSubviews];
 }
 
 
