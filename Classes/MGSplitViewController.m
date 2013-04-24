@@ -148,16 +148,8 @@
 - (void)dealloc
 {
 	_delegate = nil;
-	[self.masterViewController release];
-	[self.detailViewController release];
 	[self.view.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
-	[_viewControllers release];
-	[_barButtonItem release];
-	[_hiddenPopoverController release];
-	[_dividerView release];
-	[_cornerViews release];
 	
-	[super dealloc];
 }
 
 
@@ -447,13 +439,11 @@
 		trailingCorners.splitViewController = self;
 		trailingCorners.cornerBackgroundColor = MG_DEFAULT_CORNER_COLOR;
 		trailingCorners.cornerRadius = MG_DEFAULT_CORNER_RADIUS;
-		_cornerViews = [[NSArray alloc] initWithObjects:leadingCorners, trailingCorners, nil];
-		[leadingCorners release];
-		[trailingCorners release];
+		_cornerViews = @[leadingCorners, trailingCorners];
 		
 	} else if ([_cornerViews count] == 2) {
-		leadingCorners = [_cornerViews objectAtIndex:0];
-		trailingCorners = [_cornerViews objectAtIndex:1];
+		leadingCorners = _cornerViews[0];
+		trailingCorners = _cornerViews[1];
 	}
 	
 	// Configure and layout the corner-views.
@@ -570,7 +560,6 @@
 	
 	if (inPopover && !_hiddenPopoverController && !_barButtonItem) {
 		// Create and configure popover for our masterViewController.
-		[_hiddenPopoverController release];
 		_hiddenPopoverController = nil;
 		[self.masterViewController viewWillDisappear:NO];
 		_hiddenPopoverController = [[UIPopoverController alloc] initWithContentViewController:self.masterViewController];
@@ -603,9 +592,8 @@
 		
 		// Feed the popover controller a fake view controller, so it releases the original (master), and does its dark magic.
 		// This fixes bug when the master view controller is contextually wrong (the height of its top and bottom bars will be wrong) when a user launches app in portrait, opens a modal full-screen view controller in landscape, then closes the view controller in landscape.
-		_hiddenPopoverController.contentViewController = [[[UIViewController alloc] init] autorelease];
+		_hiddenPopoverController.contentViewController = [[UIViewController alloc] init];
 		
-		[_hiddenPopoverController release];
 		_hiddenPopoverController = nil;
 		
 		// Inform delegate that the _barButtonItem will become invalid.
@@ -616,7 +604,6 @@
 		}
 		
 		// Destroy _barButtonItem.
-		[_barButtonItem release];
 		_barButtonItem = nil;
 		
 		// Move master view.
@@ -979,29 +966,29 @@
 
 - (NSArray *)viewControllers
 {
-	return [[_viewControllers copy] autorelease];
+	return [_viewControllers copy];
 }
 
 
 - (void)setViewControllers:(NSArray *)controllers
 {
-	if ([_viewControllers objectAtIndex:0] != [controllers objectAtIndex:0]) {
-		if ([_viewControllers objectAtIndex:0] != [NSNull null]) {
-			[[[_viewControllers objectAtIndex:0] view] removeFromSuperview];
+	if (_viewControllers[0] != controllers[0]) {
+		if (_viewControllers[0] != [NSNull null]) {
+			[[_viewControllers[0] view] removeFromSuperview];
 			[_viewControllers removeObjectAtIndex:0];
-			[_viewControllers insertObject:[controllers objectAtIndex:0] atIndex:0];
+			[_viewControllers insertObject:controllers[0] atIndex:0];
 		}
 	}
-	if ([_viewControllers objectAtIndex:1] != [controllers objectAtIndex:1]) {
-		if ([_viewControllers objectAtIndex:1] != [NSNull null]) {
-			[[[_viewControllers objectAtIndex:1] view] removeFromSuperview];
+	if (_viewControllers[1] != controllers[1]) {
+		if (_viewControllers[1] != [NSNull null]) {
+			[[_viewControllers[1] view] removeFromSuperview];
 			[_viewControllers removeObjectAtIndex:1];
-			[_viewControllers insertObject:[controllers objectAtIndex:1] atIndex:1];
+			[_viewControllers insertObject:controllers[1] atIndex:1];
 		}
 	}	
 	if (controllers && [controllers count] >= 2) {
-		self.masterViewController = [controllers objectAtIndex:0];
-		self.detailViewController = [controllers objectAtIndex:1];
+		self.masterViewController = controllers[0];
+		self.detailViewController = controllers[1];
 	} else {
 		NSLog(@"Error: %@ requires 2 view-controllers. (%@)", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 	}
@@ -1013,9 +1000,9 @@
 - (UIViewController *)masterViewController
 {
 	if (_viewControllers && [_viewControllers count] > 0) {
-		NSObject *controller = [_viewControllers objectAtIndex:0];
+		NSObject *controller = _viewControllers[0];
 		if ([controller isKindOfClass:[UIViewController class]]) {
-			return [[controller retain] autorelease];
+			return (UIViewController *)controller;
 		}
 	}
 	
@@ -1036,10 +1023,10 @@
 	
 	BOOL changed = YES;
 	if ([_viewControllers count] > 0) {
-		if ([_viewControllers objectAtIndex:0] == newMaster) {
+		if (_viewControllers[0] == newMaster) {
 			changed = NO;
 		} else {
-			[_viewControllers replaceObjectAtIndex:0 withObject:newMaster];
+			_viewControllers[0] = newMaster;
 		}
 		
 	} else {
@@ -1055,9 +1042,9 @@
 - (UIViewController *)detailViewController
 {
 	if (_viewControllers && [_viewControllers count] > 1) {
-		NSObject *controller = [_viewControllers objectAtIndex:1];
+		NSObject *controller = _viewControllers[1];
 		if ([controller isKindOfClass:[UIViewController class]]) {
-			return [[controller retain] autorelease];
+			return (UIViewController *)controller;
 		}
 	}
 	
@@ -1074,10 +1061,10 @@
 	
 	BOOL changed = YES;
 	if ([_viewControllers count] > 1) {
-		if ([_viewControllers objectAtIndex:1] == detail) {
+		if (_viewControllers[1] == detail) {
 			changed = NO;
 		} else {
-			[_viewControllers replaceObjectAtIndex:1 withObject:detail];
+			_viewControllers[1] = detail;
 		}
 		
 	} else {
@@ -1092,7 +1079,7 @@
 
 - (MGSplitDividerView *)dividerView
 {
-	return [[_dividerView retain] autorelease];
+	return _dividerView;
 }
 
 
@@ -1100,8 +1087,7 @@
 {
 	if (divider != _dividerView) {
 		[_dividerView removeFromSuperview];
-		[_dividerView release];
-		_dividerView = [divider retain];
+		_dividerView = divider;
 		_dividerView.splitViewController = self;
 		_dividerView.backgroundColor = MG_DEFAULT_CORNER_COLOR;
 		if ([self isShowingMaster]) {
@@ -1187,7 +1173,7 @@
 - (NSArray *)cornerViews
 {
 	if (_cornerViews) {
-		return [[_cornerViews retain] autorelease];
+		return _cornerViews;
 	}
 	
 	return nil;
